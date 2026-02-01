@@ -1,0 +1,13 @@
+{
+    "jdk.java.onSave.organizeImports": true,
+    "java.project.sourcePaths": [
+        "src/main",
+        "src/domain",
+        "src/adapter",
+        "main",
+        "domain",
+        "adapter",
+        "src"
+    ],
+    "java.format.settings.url": ".vscode/java-formatter.xml"
+}
