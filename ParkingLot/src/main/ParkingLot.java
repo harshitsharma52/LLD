@@ -33,6 +33,9 @@ public class ParkingLot {
                 activeTickets.put(vehicle.number, ticket);
                 return ticket;
             }
+            else{
+                System.out.println("No available spot for vehicle: " + vehicle.number);
+            }
         }
         return null;
     }
@@ -65,7 +68,7 @@ public class ParkingLot {
 
         ParkingLot lot = new ParkingLot(List.of(floor1), payment);
 
-        Vehicle car = new Vehicle("KA-01-1111", VehicleType.BIKE);
+        Vehicle car = new Vehicle("KA-01-1111", VehicleType.TRUCK);
         Ticket ticket = lot.parkVehicle(car);
 
         Receipt receipt = lot.unparkVehicle("KA-01-1111");
