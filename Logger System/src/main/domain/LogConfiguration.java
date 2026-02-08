@@ -1,17 +1,17 @@
 package domain;
 
 public class LogConfiguration {
-    private volatile LogLevel rootLevel;
+    private volatile RecoveryStatus rootLevel;
 
-    public LogConfiguration(LogLevel rootLevel) {
+    public LogConfiguration(RecoveryStatus rootLevel) {
         this.rootLevel = rootLevel;
     }
 
-    public LogLevel getRootLevel() {
+    public RecoveryStatus getRootLevel() {
         return rootLevel;
     }
 
-    public void setRootLevel(LogLevel level) {
+    public void setRootLevel(RecoveryStatus level) {
         this.rootLevel = level;
     }
 }
