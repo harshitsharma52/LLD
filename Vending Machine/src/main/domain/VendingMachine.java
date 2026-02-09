@@ -1,5 +1,8 @@
 package domain;
+
+import domain.state.DispensingState;
 import domain.state.IdleState;
+import domain.state.ProcessingState;
 import domain.state.VendingMachineState;
 import java.util.*;
 
@@ -8,76 +11,85 @@ public class VendingMachine {
     int id;
     VendingMachineState state;
     Map<Product, Integer> inventory = new HashMap<>();
+    Product selectedProduct;
     Transaction transaction;
     RecoveryManager recoveryManager = new RecoveryManager();
-    double currentAmount = 0;
+
+    public boolean simulatePowerFailure = false;
 
     public VendingMachine(int id) {
         this.id = id;
         this.state = new IdleState();
+        System.out.println("STATE → IDLE");
     }
 
-    public void addInventory(Product product, int quantity) {
-        inventory.put(product, quantity);
-    }
-
-    public  void setState(VendingMachineState s) {
+    void setState(VendingMachineState s) {
         state = s;
         System.out.println("STATE → " + s.name());
     }
 
     public void selectProduct(Product p) {
-        if (!inventory.containsKey(p) || inventory.get(p) == 0)
-            throw new RuntimeException("Out of stock");
-
-        transaction = new Transaction(1, p);
+        if (!inventory.containsKey(p) || inventory.get(p) == 0) {
+            throw new RuntimeException("Product out of stock");
+        }
+        selectedProduct = p;
+        System.out.println("Product selected: " + p.name
+                + " (₹" + p.price + ")");
     }
 
     public void insertMoney(Denomination d) {
         state.insertMoney(this, d);
     }
 
-    public void cancel() {
-        state.cancel(this);
-    }
+    // ================= CORE LOGIC =================
+    public void startTransaction(Denomination d) {
 
-    public void addMoney(Denomination d) {
-        currentAmount += d.value / 100.0;
-        transaction.insertedAmount = currentAmount;
-    }
+        transaction = new Transaction(1, selectedProduct);
+        transaction.insertedAmount = d.value;
 
-    public boolean isPaymentComplete() {
-        return currentAmount >= transaction.product.price;
+        setState(new ProcessingState());
+        recoveryManager.save(
+                new Recovery(id, transaction.id, "PROCESSING"));
+
+        // ❌ insufficient money
+        if (transaction.insertedAmount < selectedProduct.price) {
+            refundAndReset(); // ✅ SAFE TERMINATION
+            return;
+        }
+
+        // ✅ sufficient money
+
+        // 💥 SIMULATE POWER FAILURE BEFORE DISPENSE
+        if (simulatePowerFailure) {
+            System.out.println("💥 POWER FAILURE BEFORE DISPENSING");
+            return; // ⛔ STOP EXECUTION HERE
+        }
+
+        setState(new DispensingState());
+        recoveryManager.save(
+                new Recovery(id, transaction.id, "DISPENSING"));
+
+        dispense();
+
     }
 
     public void dispense() {
-        System.out.println("Dispensing " + transaction.product.name);
-        inventory.put(transaction.product,
-                inventory.get(transaction.product) - 1);
+        inventory.put(
+                selectedProduct,
+                inventory.get(selectedProduct) - 1);
 
-        double change = currentAmount - transaction.product.price;
-        System.out.println("Change returned: $" + change);
+        System.out.println("Dispensing product: " + selectedProduct.name);
+
+        double change = transaction.insertedAmount - selectedProduct.price;
+
+        System.out.println("Returning change: ₹" + change);
 
         transaction.status = TransactionStatus.COMPLETED;
-        currentAmount = 0;
-
         recoveryManager.markCompleted();
         setState(new IdleState());
     }
 
-    public void refund() {
-        System.out.println("Refunded $" + currentAmount);
-        currentAmount = 0;
-        transaction.status = TransactionStatus.CANCELLED;
-        recoveryManager.markCompleted();
-    }
-
-    public void startRecovery(String stateName) {
-        recoveryManager.save(
-                new Recovery(id, transaction.id, stateName));
-    }
-
-    // POWER FAILURE RECOVERY
+    // ================= POWER FAILURE RECOVERY =================
     public void recoverOnStartup() {
         Recovery r = recoveryManager.load();
 
@@ -86,15 +98,40 @@ public class VendingMachine {
             return;
         }
 
-        if (r.state.equals("PROCESSING_PAYMENT")) {
-            System.out.println("Recovering: refunding user");
-            refund();
-            setState(new IdleState());
+        if (r.state.equals("PROCESSING")) {
+            System.out.println(
+                    "Power failure during PROCESSING. Refunding ₹"
+                            + transaction.insertedAmount);
+            refundAndReset(); // 🔒 THIS IS THE KEY FIX
+            return; // ⛔ STOP HERE
         }
 
         if (r.state.equals("DISPENSING")) {
-            System.out.println("Recovering: finishing dispense");
+            System.out.println(
+                    "Power failure during DISPENSING. Completing dispense.");
             dispense();
         }
     }
+
+    public void addInventory(Product product, int quantity) {
+        inventory.put(product, quantity);
+    }
+
+    private void refundAndReset() {
+
+        if (transaction == null) {
+            setState(new IdleState());
+            return;
+        }
+        System.out.println("Refunding ₹" + transaction.insertedAmount);
+
+        transaction.status = TransactionStatus.CANCELLED;
+
+        // 🔒 CRITICAL FIXES
+        transaction = null; // terminate transaction
+        recoveryManager.markCompleted(); // invalidate recovery
+
+        setState(new IdleState());
+    }
+
 }
