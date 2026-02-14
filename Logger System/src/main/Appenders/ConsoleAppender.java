@@ -18,3 +18,19 @@ public class ConsoleAppender implements LogAppender {
 
 
 //“Appender is synchronized to avoid mixed log lines.”
+
+// Two threads log at the same time:
+
+// Thread 1:
+
+// [ERROR] Payment failed
+
+
+// Thread 2:
+
+// [WARNING] Invalid login
+
+
+// Without synchronization, output may mix like:
+
+// [ERROR] Paym[WARNING] Invalid loginent failed

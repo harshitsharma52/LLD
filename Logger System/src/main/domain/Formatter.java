@@ -1,5 +1,5 @@
 package domain;
 
 public interface Formatter {
-    String format(RecoveryManager message);
+    String format(LogMessage message);
 }
