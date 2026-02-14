@@ -12,16 +12,19 @@ import domain.VehicleType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import strategy.HourlyPricingStrategy;
 
 public class ParkingLot {
 
     List<ParkingFloor> floors;
     Map<String, Ticket> activeTickets = new HashMap<>();
     PaymentProcessor paymentProcessor;
+    private PricingStrategy pricingStrategy;
 
-    public ParkingLot(List<ParkingFloor> floors, PaymentProcessor paymentProcessor) {
+    public ParkingLot(List<ParkingFloor> floors, PaymentProcessor paymentProcessor, PricingStrategy pricingStrategy) {
         this.floors = floors;
         this.paymentProcessor = paymentProcessor;
+        this.pricingStrategy = pricingStrategy;
     }
 
     public Ticket parkVehicle(Vehicle vehicle) {
@@ -32,8 +35,7 @@ public class ParkingLot {
                 Ticket ticket = new Ticket(vehicle, spot);
                 activeTickets.put(vehicle.number, ticket);
                 return ticket;
-            }
-            else{
+            } else {
                 System.out.println("No available spot for vehicle: " + vehicle.number);
             }
         }
@@ -46,7 +48,7 @@ public class ParkingLot {
             return null;
         }
 
-        int amount = PricingStrategy.calculatePrice(ticket);
+        int amount = pricingStrategy.calculatePrice(ticket);
         if (!paymentProcessor.pay(amount)) {
             return null;
         }
@@ -62,13 +64,19 @@ public class ParkingLot {
 
         List<ParkingSpot> spots = List.of(new ParkingSpot(1, VehicleType.CAR), new ParkingSpot(2, VehicleType.BIKE));
 
+        Map<VehicleType, Integer> rates = Map.of(
+                VehicleType.BIKE, 10,
+                VehicleType.CAR, 20,
+                VehicleType.TRUCK, 50);
+
         ParkingFloor floor1 = new ParkingFloor(1, spots);
 
         PaymentProcessor payment = new RazorPayAdapter(new RazorPayGateway());
+        PricingStrategy pricing = new HourlyPricingStrategy(rates);
 
-        ParkingLot lot = new ParkingLot(List.of(floor1), payment);
+        ParkingLot lot = new ParkingLot(List.of(floor1), payment, pricing);
 
-        Vehicle car = new Vehicle("KA-01-1111", VehicleType.TRUCK);
+        Vehicle car = new Vehicle("KA-01-1111", VehicleType.CAR);
         Ticket ticket = lot.parkVehicle(car);
 
         Receipt receipt = lot.unparkVehicle("KA-01-1111");

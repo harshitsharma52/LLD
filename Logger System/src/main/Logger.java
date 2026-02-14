@@ -62,6 +62,8 @@ public class Logger {
 
         Formatter formatter = new SimpleFormatter();
 
+        // Formatter follows Strategy Pattern. It allows different formatting algorithms to be plugged in at runtime without modifying existing Logger or Appender code
+
         logger.addAppender(new ConsoleAppender(formatter));
         logger.addAppender(new FileAppender(formatter));
 
