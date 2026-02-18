@@ -15,6 +15,8 @@ public class VendingMachine {
     Transaction transaction;
     RecoveryManager recoveryManager = new RecoveryManager();
 
+    public boolean simulateDispenseFailure = false;
+
     public boolean simulatePowerFailure = false;
 
     public VendingMachine(int id) {
@@ -48,49 +50,72 @@ public class VendingMachine {
         transaction.insertedAmount = d.value;
 
         setState(new ProcessingState());
-        recoveryManager.save(
-                new Recovery(id, transaction.id, "PROCESSING"));
+
+        // Save recovery checkpoint
+        Recovery recovery =
+                new Recovery(id, transaction.id, MachineStateType.PROCESSING);
+        recovery.moneyCollected = true;
+        recovery.inventoryDeducted = false;
+        recoveryManager.save(recovery);
 
         // ❌ insufficient money
         if (transaction.insertedAmount < selectedProduct.price) {
-            refundAndReset(); // ✅ SAFE TERMINATION
+            refundAndReset();
             return;
         }
 
-        // ✅ sufficient money
-
-        // 💥 SIMULATE POWER FAILURE BEFORE DISPENSE
+        // 💥 SIMULATE FAILURE BEFORE DISPENSE
         if (simulatePowerFailure) {
             System.out.println("💥 POWER FAILURE BEFORE DISPENSING");
-            return; // ⛔ STOP EXECUTION HERE
+            return;
         }
 
         setState(new DispensingState());
-        recoveryManager.save(
-                new Recovery(id, transaction.id, "DISPENSING"));
+
+        // Update recovery state
+        recovery.state = MachineStateType.DISPENSING;
+        recoveryManager.save(recovery);
 
         dispense();
-
     }
 
-    public void dispense() {
+ public void dispense() {
+
+    Recovery recovery = recoveryManager.load();
+
+    // Deduct inventory ONLY ONCE
+    if (!recovery.inventoryDeducted) {
         inventory.put(
                 selectedProduct,
                 inventory.get(selectedProduct) - 1);
 
-        System.out.println("Dispensing product: " + selectedProduct.name);
-
-        double change = transaction.insertedAmount - selectedProduct.price;
-
-        System.out.println("Returning change: ₹" + change);
-
-        transaction.status = TransactionStatus.COMPLETED;
-        recoveryManager.markCompleted();
-        setState(new IdleState());
+        recovery.inventoryDeducted = true;
+        recoveryManager.save(recovery);
     }
+
+    // 💥 Simulate failure DURING dispensing
+    if (simulateDispenseFailure) {
+        System.out.println("💥 POWER FAILURE DURING DISPENSING");
+        return; // Crash before completion
+    }
+
+    System.out.println("Dispensing product: " + selectedProduct.name);
+
+    double change =
+            transaction.insertedAmount - selectedProduct.price;
+
+    System.out.println("Returning change: ₹" + change);
+
+    transaction.status = TransactionStatus.COMPLETED;
+    recoveryManager.markCompleted();
+
+    setState(new IdleState());
+}
+
 
     // ================= POWER FAILURE RECOVERY =================
     public void recoverOnStartup() {
+
         Recovery r = recoveryManager.load();
 
         if (r == null || r.status == RecoveryStatus.COMPLETED) {
@@ -98,18 +123,29 @@ public class VendingMachine {
             return;
         }
 
-        if (r.state.equals("PROCESSING")) {
-            System.out.println(
-                    "Power failure during PROCESSING. Refunding ₹"
-                            + transaction.insertedAmount);
-            refundAndReset(); // 🔒 THIS IS THE KEY FIX
-            return; // ⛔ STOP HERE
+        System.out.println("Recovering machine... Last state: " + r.state);
+
+        if (r.state == MachineStateType.PROCESSING) {
+
+            if (r.moneyCollected) {
+                System.out.println(
+                        "Power failure during PROCESSING. Refunding ₹"
+                                + transaction.insertedAmount);
+
+                transaction.status = TransactionStatus.CANCELLED;
+            }
+
+            recoveryManager.markCompleted();
+            setState(new IdleState());
+            return;
         }
 
-        if (r.state.equals("DISPENSING")) {
+        if (r.state == MachineStateType.DISPENSING) {
+
             System.out.println(
                     "Power failure during DISPENSING. Completing dispense.");
-            dispense();
+
+            dispense(); // safe (idempotent)
         }
     }
 
@@ -123,15 +159,13 @@ public class VendingMachine {
             setState(new IdleState());
             return;
         }
+
         System.out.println("Refunding ₹" + transaction.insertedAmount);
 
         transaction.status = TransactionStatus.CANCELLED;
+        recoveryManager.markCompleted();
 
-        // 🔒 CRITICAL FIXES
-        transaction = null; // terminate transaction
-        recoveryManager.markCompleted(); // invalidate recovery
-
+        transaction = null;
         setState(new IdleState());
     }
-
 }

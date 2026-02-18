@@ -22,20 +22,23 @@ public class VendingMachineSimulation {
         System.out.println("💥 POWER FAIL DURING PROCESSING\n");
 
         vm.selectProduct(coke);
-        vm.simulatePowerFailure = true; // 💥 interrupt before dispense
+        vm.simulatePowerFailure = true; // failure before dispense
         vm.insertMoney(Denomination.HUNDRED);
 
-        // power restored
+        // Restore
         vm.simulatePowerFailure = false;
         vm.recoverOnStartup();
 
-        // ⚡ Case 3: Power failure during DISPENSING
-        System.out.println("💥 POWER FAIL DURING DISPENSING\n");
+        System.out.println("### POWER FAIL DURING DISPENSING\n");
 
         vm.selectProduct(coke);
+        vm.simulateDispenseFailure = true; // failure during dispense
         vm.insertMoney(Denomination.HUNDRED);
-        System.out.println("💥 POWER FAILURE DURING DISPENSING");
+
+        // Restore
+        vm.simulateDispenseFailure = false;
         vm.recoverOnStartup();
+
     }
 
     // Failure Time Recovery Action
