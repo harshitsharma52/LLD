@@ -23,13 +23,13 @@ class FileLogger implements Logger {
     }
 }
 
-
-// This is just a base wrapper — real behavior will come from child classes”
-// Prevents wrong usage new LoggerDecorator(...) // ❌
-// Gives common structure
-
 // “Abstract is used to define a base class that cannot be instantiated and forces subclasses to provide implementation.”
 
+
+//DOES NOT define log() behavior thats why abstarct class, it just stores reference of another logger and forces subclass to implement log() method
+// All decorators:
+// MUST have a Logger
+// MUST behave like Logger
 abstract class LoggerDecorator implements Logger {
     protected Logger logger;
 
