@@ -202,3 +202,12 @@ public class ParkingLot {
     }
     
 }
+
+
+// “Thread safety is required because multiple vehicles can concurrently access shared resources like slots and tickets.
+// I ensured safety by:
+
+// Synchronizing slot-level operations to prevent double allocation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+// Synchronizing parking flow to ensure atomic assignment
+// Using ConcurrentHashMap for shared ticket storage
+// This ensures consistency without data corruption.”
