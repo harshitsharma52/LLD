@@ -16,7 +16,9 @@ class BasicCoffee implements Coffee {
     }
 }
 
-// Abstract Decorator
+// Abstract Decorator -> We do not want users to create a plain decorator object directly because decorator itself is incomplete and meaningless.
+// CoffeeDecorator only provides common logic shared by all decorators:
+
 abstract class CoffeeDecorator implements Coffee {
     protected Coffee coffee;
 
