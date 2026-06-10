@@ -1,6 +1,10 @@
 import java.util.*;
 import java.util.concurrent.*;
 
+//////////////////////////////////////////////////////////
+// MESSAGE
+//////////////////////////////////////////////////////////
+
 class Message {
 
     private final String id;
@@ -15,33 +19,50 @@ class Message {
         this.content = content;
     }
 
+    public String getId() {
+
+        return id;
+    }
+
     public String getContent() {
 
         return content;
     }
 }
 
+//////////////////////////////////////////////////////////
+// SUBSCRIBER
+//////////////////////////////////////////////////////////
 
 interface Subscriber {
 
-    void consume(Message message);
+    void consume(
+            Message message);
 }
 
-class EmailSubscriber implements Subscriber {
+//////////////////////////////////////////////////////////
+// EMAIL SUBSCRIBER
+//////////////////////////////////////////////////////////
+
+class EmailSubscriber
+        implements Subscriber {
 
     private final String name;
 
-    public EmailSubscriber(String name) {
+    public EmailSubscriber(
+            String name) {
 
         this.name = name;
     }
 
     @Override
-    public void consume( Message message) {
+    public void consume(
+            Message message) {
 
         System.out.println(
 
-                Thread.currentThread().getName()
+                Thread.currentThread()
+                        .getName()
 
                         + " -> "
 
@@ -50,8 +71,95 @@ class EmailSubscriber implements Subscriber {
                         + " received : "
 
                         + message.getContent());
+
+        //////////////////////////////////////////////////
+        // SIMULATE PROCESSING
+        //////////////////////////////////////////////////
+
+        try {
+
+            Thread.sleep(1000);
+
+        } catch(Exception e) {
+
+            e.printStackTrace();
+        }
     }
 }
+
+//////////////////////////////////////////////////////////
+// SUBSCRIBER WORKER
+//////////////////////////////////////////////////////////
+
+class SubscriberWorker {
+
+    //////////////////////////////////////////////////
+    // FIFO QUEUE
+    //
+    // Guarantees ordering
+    //////////////////////////////////////////////////
+
+    private final BlockingQueue<Message>
+            queue =
+            new LinkedBlockingQueue<>();
+
+    private final Subscriber subscriber;
+
+    public SubscriberWorker(
+            Subscriber subscriber) {
+
+        this.subscriber = subscriber;
+
+        startWorker();
+    }
+
+    //////////////////////////////////////////////////
+    // DEDICATED THREAD
+    //
+    // One thread per subscriber
+    // Messages processed sequentially
+    //////////////////////////////////////////////////
+
+    private void startWorker() {
+
+        Thread worker =
+                new Thread(() -> {
+
+                    while(true) {
+
+                        try {
+
+                            Message message =
+                                    queue.take();
+
+                            subscriber.consume(
+                                    message);
+
+                        } catch(Exception e) {
+
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
+        worker.start();
+    }
+
+    //////////////////////////////////////////////////
+    // ADD MESSAGE TO QUEUE
+    //////////////////////////////////////////////////
+
+    public void submit(
+            Message message) {
+
+        queue.offer(
+                message);
+    }
+}
+
+//////////////////////////////////////////////////////////
+// TOPIC
+//////////////////////////////////////////////////////////
 
 class Topic {
 
@@ -59,61 +167,104 @@ class Topic {
 
     //////////////////////////////////////////////////
     // THREAD SAFE
+    //
+    // Subscribers can be added while
+    // publishing is happening
     //////////////////////////////////////////////////
 
-    private final List<Subscriber>subscribers = new CopyOnWriteArrayList<>();
+    private final List<SubscriberWorker>
+            workers =
+            new CopyOnWriteArrayList<>();
 
-    //////////////////////////////////////////////////
-    // PARALLEL PROCESSING
-    //////////////////////////////////////////////////
-
-    private final ExecutorService executor = Executors.newCachedThreadPool();
-
-    public Topic(String topicName) {
+    public Topic(
+            String topicName) {
 
         this.topicName = topicName;
     }
 
-    public void subscribe( Subscriber subscriber) {
+    //////////////////////////////////////////////////
+    // SUBSCRIBE
+    //////////////////////////////////////////////////
 
-        subscribers.add(subscriber);
+    public void subscribe(
+            Subscriber subscriber) {
+
+        workers.add(
+
+                new SubscriberWorker(
+                        subscriber));
     }
 
-    public void publish(Message message) {
+    //////////////////////////////////////////////////
+    // PUBLISH
+    //
+    // Fan-out message to all subscribers
+    //////////////////////////////////////////////////
 
-        for(Subscriber subscriber : subscribers){
+    public void publish(
+            Message message) {
 
-            executor.submit(() -> {
+        for(SubscriberWorker worker
+                : workers) {
 
-                subscriber.consume( message);
-            });
+            worker.submit(
+                    message);
         }
     }
 }
 
+//////////////////////////////////////////////////////////
+// MESSAGE QUEUE
+//////////////////////////////////////////////////////////
+
 class MessageQueue {
 
-    private final Map<String, Topic> topics = new ConcurrentHashMap<>();
+    //////////////////////////////////////////////////
+    // THREAD SAFE TOPIC STORE
+    //////////////////////////////////////////////////
 
-    public void createTopic(String topicName) 
-    {
+    private final Map<String, Topic>
+            topics =
+            new ConcurrentHashMap<>();
 
-        topics.putIfAbsent(topicName,  new Topic(topicName));
+    //////////////////////////////////////////////////
+    // CREATE TOPIC
+    //////////////////////////////////////////////////
+
+    public void createTopic(
+            String topicName) {
+
+        topics.putIfAbsent(
+
+                topicName,
+
+                new Topic(
+                        topicName));
     }
 
-    public Topic getTopic( String topicName) {
+    //////////////////////////////////////////////////
+    // GET TOPIC
+    //////////////////////////////////////////////////
 
-        return topics.get(topicName);
+    public Topic getTopic(
+            String topicName) {
+
+        return topics.get(
+                topicName);
     }
 }
 
-
-
+//////////////////////////////////////////////////////////
+// MAIN
+//////////////////////////////////////////////////////////
 
 public class Kafka {
 
-    public static void main(
-            String[] args) {
+    public static void main(String[] args) throws Exception {
+
+        //////////////////////////////////////////////////
+        // MESSAGE QUEUE
+        //////////////////////////////////////////////////
 
         MessageQueue queue =
                 new MessageQueue();
@@ -146,16 +297,31 @@ public class Kafka {
                         "Subscriber-3"));
 
         //////////////////////////////////////////////////
-        // PUBLISH MESSAGE
+        // PUBLISH MESSAGES
         //////////////////////////////////////////////////
 
         payments.publish(
 
                 new Message(
-
                         "1",
+                        "Message-1"));
 
-                        "Payment Successful"));
+        payments.publish(
+
+                new Message(
+                        "2",
+                        "Message-2"));
+
+        payments.publish(
+
+                new Message(
+                        "3",
+                        "Message-3"));
+
+        //////////////////////////////////////////////////
+        // KEEP JVM ALIVE
+        //////////////////////////////////////////////////
+
+        Thread.sleep(5000);
     }
-
 }
