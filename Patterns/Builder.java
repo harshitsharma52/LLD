@@ -60,3 +60,7 @@ public class Builder {
     }
     
 }
+
+
+// why static inner builder class bcz non static innner class always need object of outer classs but whole purpose of builder class to create object of product class but now you first need product object
+// aslo if builder is outside the class then constructor must be public but we want to make it private so that no one can create object of product class without builder class
