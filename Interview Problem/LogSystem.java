@@ -1,5 +1,6 @@
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.*;
 
 enum LogLevel {
@@ -10,6 +11,8 @@ enum LogLevel {
 
     int priority;
 
+
+    // This constructor is called when Java creates each enum value.
     LogLevel(int priority) {
 
         this.priority = priority;
@@ -131,9 +134,16 @@ class Logger {
     // LOGGER DATA
     ////////////////////////////////////////////////
 
-    private LogLevel currentLevel = LogLevel.INFO;
+    // volatile so a setLevel() call on one thread is immediately
+    // visible to log() calls happening on other threads
+    private volatile LogLevel currentLevel = LogLevel.INFO;
 
-    private final List<LogAppender> appenders = new ArrayList<>();
+    // CopyOnWriteArrayList instead of ArrayList:
+    // appenders are added rarely (usually just at startup) but
+    // read on EVERY single log() call from potentially many threads.
+    // CopyOnWriteArrayList makes reads/iteration lock-free and safe
+    // even if addAppender() is called concurrently with log().
+    private final List<LogAppender> appenders = new CopyOnWriteArrayList<>();
 
     private final LogFormatter formatter = new LogFormatter();
 
@@ -144,6 +154,20 @@ class Logger {
     public void addAppender(LogAppender appender) {
 
         appenders.add(appender);
+    }
+
+    ////////////////////////////////////////////////
+    // SET LOG LEVEL AT RUNTIME
+    ////////////////////////////////////////////////
+
+    public void setLevel(LogLevel level) {
+
+        this.currentLevel = level;
+    }
+
+    public LogLevel getLevel() {
+
+        return this.currentLevel;
     }
 
     ////////////////////////////////////////////////
@@ -180,12 +204,23 @@ class Logger {
 
         ////////////////////////////////////////////////
         // SEND TO ALL APPENDERS
+        // Each appender call is isolated in its own try/catch so
+        // one failing appender (e.g. disk full in FileAppender)
+        // doesn't stop the remaining appenders from receiving the log.
         ////////////////////////////////////////////////
 
         for (LogAppender appender : appenders) {
 
-            appender.append(
-                    formattedMessage);
+            try {
+
+                appender.append(
+                        formattedMessage);
+
+            } catch (Exception e) {
+
+                System.err.println(
+                        "Appender failed: " + e.getMessage());
+            }
         }
     }
 }
@@ -212,7 +247,7 @@ class LogSystem {
                 new FileAppender());
 
         ////////////////////////////////////////////////
-        // LOGS
+        // LOGS AT DEFAULT LEVEL (INFO)
         ////////////////////////////////////////////////
 
         logger.log(
@@ -225,7 +260,17 @@ class LogSystem {
 
         logger.log(
                 LogLevel.DEBUG,
-                "Debugging application");
+                "Debugging application"); // filtered out, priority < INFO
+
+        ////////////////////////////////////////////////
+        // CHANGE LOG LEVEL AT RUNTIME, THEN LOG AGAIN
+        ////////////////////////////////////////////////
+
+        logger.setLevel(LogLevel.DEBUG);
+
+        logger.log(
+                LogLevel.DEBUG,
+                "Debugging application"); // now printed, level lowered to DEBUG
     }
 
 }
