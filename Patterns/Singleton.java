@@ -40,6 +40,7 @@ public class Singleton {
 // ---------------- EAGER SINGLETON ----------------
 class EagerSingleton {
 
+    //instance belongs to the class itself, so there is only one shared variable thats why static is used
     private static final EagerSingleton instance = new EagerSingleton();
 
     private EagerSingleton() {
