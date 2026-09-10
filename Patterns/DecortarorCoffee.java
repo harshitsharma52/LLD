@@ -101,6 +101,49 @@ class DecoratorCoffee {
 }
 
 
+// Each decorator object holds a reference to another Coffee object, which can itself be another decorator.
+
+// In your code:
+
+// protected Coffee coffee;
+
+// That reference creates the chain.
+
+// coffee
+//   ↓
+// WhippedCream
+//       |
+//       ↓
+//     Sugar
+//       |
+//       ↓
+//      Milk
+//       |
+//       ↓
+//  BasicCoffee
+
+
+//  coffee.getCost();
+
+
+//  WhippedCream.getCost()
+
+// executes:
+
+// return coffee.getCost() + 7;
+
+// But its coffee points to Sugar, so:
+
+// WhippedCream.getCost()
+//         ↓
+// Sugar.getCost()
+//         ↓
+// Milk.getCost()
+//         ↓
+// BasicCoffee.getCost()
+//         ↓
+// 20
+
 
 
 // interface
