@@ -289,3 +289,20 @@ class DecoratorCoffee {
 // Logging
 //   ↓
 // Email
+
+
+// Interview definition
+
+// Decorator Pattern allows us to dynamically add responsibilities or behavior to an individual object by wrapping it with decorator objects, without modifying the original class or creating subclasses for every combination of behavior.
+
+// And the biggest clue that you should consider Decorator is:
+
+// "I have a base object and many optional features that can be combined in different ways."
+
+// Interview definition
+
+// Decorator Pattern allows us to dynamically add responsibilities or behavior to an individual object by wrapping it with decorator objects, without modifying the original class or creating subclasses for every combination of behavior.
+
+// And the biggest clue that you should consider Decorator is:
+
+// "I have a base object and many optional features that can be combined in different ways."
