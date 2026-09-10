@@ -101,6 +101,31 @@ class DecoratorCoffee {
 }
 
 
+// You didn't modify BasicCoffee.
+
+// You didn't create a MilkSugarCoffee subclass.
+
+// You simply composed objects dynamically.
+
+// Coffee coffee = new BasicCoffee();
+
+// if (userSelectedMilk) {
+//     coffee = new Milk(coffee);
+// }
+
+// if (userSelectedSugar) {
+//     coffee = new Sugar(coffee);
+// }
+
+// if (userSelectedWhippedCream) {
+//     coffee = new WhippedCream(coffee);
+// }
+
+
+// And because the wrapper also implements Coffee, you can keep wrapping it indefinitely.
+
+
+
 // Each decorator object holds a reference to another Coffee object, which can itself be another decorator.
 
 // In your code:
@@ -229,3 +254,38 @@ class DecoratorCoffee {
 //           ↑     ↑     ↑
 //           |     |     |
 //         Milk  Sugar  WhippedCream
+
+
+
+
+
+// This is the key difference
+// Inheritance approach ❌
+
+// You create a new class for every combination:
+
+// Email
+//  ↓
+// EncryptedEmail
+//  ↓
+// EncryptedLoggedEmail
+//  ↓
+// EncryptedLoggedRetryEmail
+// Decorator approach ✅
+
+// You create independent features:
+
+// Email
+// LoggingDecorator
+// EncryptionDecorator
+// RetryDecorator
+
+// And combine them:
+
+// Retry
+//   ↓
+// Encryption
+//   ↓
+// Logging
+//   ↓
+// Email
