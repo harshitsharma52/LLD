@@ -19,6 +19,10 @@ class BasicCoffee implements Coffee {
 // Abstract Decorator -> We do not want users to create a plain decorator object directly because decorator itself is incomplete and meaningless.
 // CoffeeDecorator only provides common logic shared by all decorators:
 
+
+// But an abstract class can say:
+
+// "I'm not a complete implementation yet. My child classes will finish the remaining methods."
 abstract class CoffeeDecorator implements Coffee {
     protected Coffee coffee;
 
@@ -95,3 +99,90 @@ class DecoratorCoffee {
      
     }
 }
+
+
+
+
+// interface
+//    ↓
+// Declares methods
+
+//        ↓
+
+// abstract class implements interface
+//    ↓
+// Can leave methods unimplemented
+//    ↓
+// Child class must implement them
+
+//        ↓
+
+// normal/concrete class implements interface
+//    ↓
+// MUST implement all abstract interface methods
+
+
+
+// So in your Decorator Pattern:
+
+// abstract class CoffeeDecorator implements Coffee
+
+// is useful because CoffeeDecorator is just a common base/wrapper. It provides:
+
+// protected Coffee coffee;
+
+// and:
+
+// CoffeeDecorator(Coffee coffee)
+
+// but lets each actual decorator (Milk, Sugar, WhippedCream) decide how cost and description should change.
+
+// That's exactly why making CoffeeDecorator abstract makes sense.|
+
+
+
+// .QUESTION  Why does CoffeeDecorator implement Coffee?
+
+// it says:
+
+// A CoffeeDecorator is also a Coffee.
+
+// This is important because a decorator wraps another Coffee.
+
+// For example:
+
+// Coffee coffee = new BasicCoffee();
+
+// coffee = new Milk(coffee);
+
+// Why not just do this?
+
+// You might ask:
+
+// abstract class CoffeeDecorator {
+//     protected Coffee coffee;
+// }
+
+// Then:
+
+// class Milk extends CoffeeDecorator implements Coffee {
+//     ...
+// }
+
+// Technically, this would work.
+
+// But then every decorator would have to separately write:
+
+// Instead, we put it once:
+
+// abstract class CoffeeDecorator implements Coffee
+
+// Then all subclasses automatically become Coffee:
+
+//              Coffee(Interface )
+//                 ↑
+//                 |
+//        CoffeeDecorator(abstarct class implemnts interface ans It's just a common parent that stores: protected Coffee coffee; )
+//           ↑     ↑     ↑
+//           |     |     |
+//         Milk  Sugar  WhippedCream
